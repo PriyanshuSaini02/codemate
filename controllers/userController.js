@@ -103,34 +103,45 @@ const loginUser = async (req, res) => {
         .json({ message: "Email and password are required" });
     }
 
-    const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email }).select("+password name");
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (isMatch) {
-      //create JWT
-      const token = await user.getJWT();
-      //Add the token to the cookie and send the response
-      res.cookie("token", token);
-      res.send("Login successful");
-      console.log("Logged In: " + user.firstName);
-    } else {
+    if (!isMatch) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
+    // Create JWT
+    const token = await user.getJWT();
+
+    // Update last login
     user.lastLogin = new Date();
     await user.save();
 
-    res.json({
-      message: "Login successful",
-      user: { ...user.toObject(), password: undefined },
-    });
+    // Send response with token in cookie
+    res
+      .cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      })
+      .status(200)
+      .json({
+        message: "Login successful",
+        token,
+        user: { ...user.toObject(), password: undefined },
+      });
+
+    console.log("Logged In:", user.name);
   } catch (error) {
-    res.status(500).json({ message: "Error logging in" });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Error logging in", error: error.message });
   }
 };
+
 
 // Create new user (admin use)
 const createUser = async (req, res) => {
