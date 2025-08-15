@@ -184,6 +184,18 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const logoutUser = async (req, res) => {
+  try {
+    res.cookie("token", null, {
+      expires: new Date(Date.now()),
+    });
+    res.send("Logged Out Successfully");
+    console.log("Logged Out");
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -192,4 +204,5 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
+  logoutUser,
 };
