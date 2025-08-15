@@ -2,21 +2,32 @@
   "name": "7thsem",
   "version": "1.0.0",
   "description": "",
+  "homepage": "https://github.com/PriyanshuSaini02/codemate#readme",
+  "bugs": {
+    "url": "https://github.com/PriyanshuSaini02/codemate/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PriyanshuSaini02/codemate.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon index.js"
   },
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.17.1",
     "nodemon": "^3.1.10",
+    "uuid": "^11.1.0",
     "validator": "^13.15.15"
   }
 }
