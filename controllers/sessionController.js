@@ -34,7 +34,7 @@ const createSession = async (req, res) => {
 
         await session.save();
 
-        const shareableLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/join/${roomId}`;
+        const shareableLink = `${process.env.SHARABLE_URL || 'http://localhost:3000'}/join/${roomId}`;
 
         res.status(201).json({
             message: 'Session created successfully',
@@ -56,12 +56,17 @@ const joinSession = async (req, res) => {
             return res.status(404).json({ message: 'Session not found' });
         }
 
+        
+        // if (session.participants.length >= session.maxParticipants) {
+        //     return res.status(403).json({ message: 'Session is full' });
+        // }
+
         if (!session.participants.includes(userId)) {
             session.participants.push(userId);
         }
         await session.save();
 
-        const shareableLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/join/${roomId}`;
+        const shareableLink = `${process.env.SHARABLE_URL || 'http://localhost:3000'}/join/${roomId}`;
 
         res.json({
             message: 'Joined session successfully',
@@ -84,7 +89,7 @@ const getSession = async (req, res) => {
             return res.status(404).json({ message: 'Session not found' });
         }
 
-        const shareableLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/join/${session.roomId}`;
+        const shareableLink = `${process.env.SHARABLE_URL || 'http://localhost:3000'}/join/${session.roomId}`;
 
         res.json({
             ...session.toObject(),
