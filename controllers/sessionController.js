@@ -9,16 +9,9 @@ const createSession = async (req, res) => {
             });
         }
 
-        const {
-            title,
-            description,
-            language,
-            isPublic,
-            tags
-        } = req.body;
-
+        const { title, description, language, isPublic, tags } = req.body;
         const userId = req.user._id;
-        const roomId = uuidv4(); // unique ID
+        const roomId = uuidv4();
 
         const session = new Session({
             roomId,
@@ -29,7 +22,8 @@ const createSession = async (req, res) => {
             language: language || 'javascript',
             isPublic: isPublic !== undefined ? isPublic : true,
             tags: tags || [],
-            codeHistory: []
+            codeHistory: [],
+            activityLog: [{ user: userId, status: 'active' }] 
         });
 
         await session.save();
@@ -49,21 +43,15 @@ const createSession = async (req, res) => {
 const joinSession = async (req, res) => {
     try {
         const { roomId } = req.body;
-        const userId = req.user._id; // from JWT
+        const userId = req.user._id;
 
         const session = await Session.findOne({ roomId });
-        if (!session) {
-            return res.status(404).json({ message: 'Session not found' });
-        }
-
-        
-        // if (session.participants.length >= session.maxParticipants) {
-        //     return res.status(403).json({ message: 'Session is full' });
-        // }
+        if (!session) return res.status(404).json({ message: 'Session not found' });
 
         if (!session.participants.includes(userId)) {
             session.participants.push(userId);
         }
+        session.activityLog.push({ user: userId, status: 'active' });
         await session.save();
 
         const shareableLink = `${process.env.SHARABLE_URL || 'http://localhost:3000'}/join/${roomId}`;
@@ -78,30 +66,64 @@ const joinSession = async (req, res) => {
     }
 };
 
+const leaveSession = async (req, res) => {
+    try {
+        const { roomId } = req.body;
+        const userId = req.user._id;
+
+        const session = await Session.findOne({ roomId });
+        if (!session) return res.status(404).json({ message: 'Session not found' });
+
+        session.participants = session.participants.filter(p => p.toString() !== userId.toString());
+
+        session.activityLog.push({ user: userId, status: 'left' });
+
+        await session.save();
+
+        res.json({ message: 'Left session successfully', session });
+    } catch (error) {
+        res.status(500).json({ message: 'Error leaving session', error: error.message });
+    }
+};
 
 const getSession = async (req, res) => {
     try {
         const session = await Session.findOne({ roomId: req.params.roomId })
             .populate('participants', 'name email')
-            .populate('creator', 'name email');
+            .populate('creator', 'name email')
+            .populate('activityLog.user', 'name email');
 
-        if (!session) {
-            return res.status(404).json({ message: 'Session not found' });
-        }
+        if (!session) return res.status(404).json({ message: 'Session not found' });
+
+        const shareableLink = `${process.env.SHARABLE_URL || 'http://localhost:3000'}/join/${session.roomId}`;
+
+        res.json({ ...session.toObject(), shareableLink });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching session', error: error.message });
+    }
+};
+const shareSession = async (req, res) => {
+    try {
+        const { roomId } = req.params;
+
+        const session = await Session.findOne({ roomId });
+        if (!session) return res.status(404).json({ message: 'Session not found' });
 
         const shareableLink = `${process.env.SHARABLE_URL || 'http://localhost:3000'}/join/${session.roomId}`;
 
         res.json({
-            ...session.toObject(),
+            message: 'Shareable link generated successfully',
             shareableLink
         });
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching session', error: error.message });
+        res.status(500).json({ message: 'Error generating shareable link', error: error.message });
     }
 };
 
 module.exports = {
     createSession,
     joinSession,
-    getSession
+    leaveSession,
+    getSession,
+    shareSession
 };

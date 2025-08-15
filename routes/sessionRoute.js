@@ -3,7 +3,9 @@ const { userAuth } = require('../middleware/auth');
 const {
     createSession,
     joinSession,
-    getSession
+    getSession,
+    shareSession,
+    leaveSession
 } = require('../controllers/sessionController');
 
 const router = express.Router();
@@ -11,5 +13,7 @@ const router = express.Router();
 router.post('/create', userAuth, createSession);
 router.post('/join', userAuth, joinSession);
 router.get('/:roomId', userAuth, getSession);
+router.get('/share/:roomId', userAuth, shareSession);
+router.post('/leave', userAuth, leaveSession);
 
 module.exports = router;
