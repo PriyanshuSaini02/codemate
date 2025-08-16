@@ -34,7 +34,7 @@ const createSession = async (req, res) => {
 
         await session.save();
 
-        const shareableLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/join/${roomId}`;
+        const shareableLink = `${process.env.FRONTEND_URL || 'http://localhost:3000/api/session'}/join/${roomId}`;
 
         res.status(201).json({
             message: 'Session created successfully',
@@ -48,7 +48,9 @@ const createSession = async (req, res) => {
 
 const joinSession = async (req, res) => {
     try {
-        const { roomId } = req.body;
+        const roomId  = req.params.roomId;
+        // console.log(roomId);
+        
         const userId = req.user._id; // from JWT
 
         const session = await Session.findOne({ roomId });
@@ -61,7 +63,7 @@ const joinSession = async (req, res) => {
         }
         await session.save();
 
-        const shareableLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/join/${roomId}`;
+        const shareableLink = `${process.env.FRONTEND_URL || 'http://localhost:3000/api/session'}/join/${roomId}`;
 
         res.json({
             message: 'Joined session successfully',
