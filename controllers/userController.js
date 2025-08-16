@@ -122,16 +122,10 @@ const loginUser = async (req, res) => {
 
     // Send response with token in cookie
     res
-      .cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      })
+      .cookie("token", token)
       .status(200)
       .json({
         message: "Login successful",
-        token,
         user: { ...user.toObject(), password: undefined },
       });
 
@@ -141,7 +135,6 @@ const loginUser = async (req, res) => {
     res.status(500).json({ message: "Error logging in", error: error.message });
   }
 };
-
 
 // Create new user (admin use)
 const createUser = async (req, res) => {
