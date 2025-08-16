@@ -49,7 +49,12 @@ const sessionSchema = new mongoose.Schema({
     updatedAt: {
         type: Date,
         default: Date.now
-    }
+    },
+     activityLog: [{
+        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        status: { type: String, enum: ['active', 'left'], required: true },
+        timestamp: { type: Date, default: Date.now }
+    }]
 });
 
 module.exports = mongoose.model('Session', sessionSchema);

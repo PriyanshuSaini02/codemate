@@ -8,6 +8,7 @@ const userRoutes = require('./routes/userRoute');
 const errorHandler = require('./middleware/errorHandler');
 const profileRouter = require('./routes/profile');
 const sessionRoutes = require('./routes/sessionRoute');
+const handRaiseRoute = require('./routes/handRaiseRoute');
 const app = express();
 
 // Middleware
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use('/api/auth', userRoutes);
 app.use('/api/',profileRouter);
 app.use('/api/session', sessionRoutes);
+app.use('/api/hand',handRaiseRoute);
 // Error Handling Middleware
 app.use(errorHandler);
 
