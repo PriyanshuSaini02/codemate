@@ -42,7 +42,7 @@ const createSession = async (req, res) => {
 
 const joinSession = async (req, res) => {
     try {
-        const { roomId } = req.body;
+        const roomId  = req.params.roomId;
         const userId = req.user._id;
 
         const session = await Session.findOne({ roomId });
@@ -54,7 +54,7 @@ const joinSession = async (req, res) => {
         session.activityLog.push({ user: userId, status: 'active' });
         await session.save();
 
-        const shareableLink = `${process.env.SHARABLE_URL || 'http://localhost:3000'}/join/${roomId}`;
+        const shareableLink = `${process.env.SHARABLE_URL || 'http://localhost:3000/api/session'}/join/${roomId}`;
 
         res.json({
             message: 'Joined session successfully',
@@ -95,7 +95,7 @@ const getSession = async (req, res) => {
 
         if (!session) return res.status(404).json({ message: 'Session not found' });
 
-        const shareableLink = `${process.env.SHARABLE_URL || 'http://localhost:3000'}/join/${session.roomId}`;
+        const shareableLink = `${process.env.SHARABLE_URL || 'http://localhost:3000/api/session'}/join/${session.roomId}`;
 
         res.json({ ...session.toObject(), shareableLink });
     } catch (error) {
@@ -109,7 +109,7 @@ const shareSession = async (req, res) => {
         const session = await Session.findOne({ roomId });
         if (!session) return res.status(404).json({ message: 'Session not found' });
 
-        const shareableLink = `${process.env.SHARABLE_URL || 'http://localhost:3000'}/join/${session.roomId}`;
+        const shareableLink = `${process.env.SHARABLE_URL || 'http://localhost:3000/api/session'}/join/${session.roomId}`;
 
         res.json({
             message: 'Shareable link generated successfully',
