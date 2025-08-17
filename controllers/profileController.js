@@ -1,5 +1,6 @@
 const { userAuth } = require("../middleware/auth");
 const { ValidateProfileEdit } = require("../utils/validation");
+  const bcrypt = require("bcrypt");
 
 const profileEdit = async (req, res) => {
   try {
@@ -30,31 +31,41 @@ const profileGet = async (req, res) => {
 };
 
 const profilePassChange = async (req, res) => {
-  const user = req.user;
   try {
+    const user = req.user; // logged in user
     const { currentpassword, newpassword, confirmpassword } = req.body;
-    const iscurrentPassword = await user.validatePassword(currentpassword);
-    if (!iscurrentPassword) {
-     return res.status(400).json({ message: "Your password is wrong" });
+
+    // 1. Check current password
+    const isMatch = await bcrypt.compare(currentpassword, user.password);
+    if (!isMatch) {
+      return res
+        .status(400)
+        .json({ message: "Your current password is wrong!" });
     }
-    //now set user passord as new password and confirm it
+
+    // 2. Check confirm password
     if (newpassword !== confirmpassword) {
       return res
         .status(400)
-        .json({
-          message:
-            "Your password New password and confirm password do not match! wrong",
-        });
-    } else if (newpassword == currentpassword) {
-      res.json({ message: "New password and current password are same!" });
+        .json({ message: "New password and confirm password do not match!" });
     }
+
+    // 3. Prevent reusing the same password
+    const isSameAsOld = await bcrypt.compare(newpassword, user.password);
+    if (isSameAsOld) {
+      return res
+        .status(400)
+        .json({ message: "New password cannot be same as old password!" });
+    }
+
+    // 4. Hash and save new password
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newpassword, salt);
     await user.save();
 
     res.json({ message: "Password updated successfully" });
   } catch (err) {
-    res.status(400).send(err.message);
+    res.status(500).json({ message: err.message });
   }
 };
 
