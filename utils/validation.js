@@ -1,4 +1,3 @@
-
 const validator = require("validator");
 
 // const validateSignUpdata = (req) => {
@@ -13,27 +12,24 @@ const validator = require("validator");
 //   }
 // };
 
-
 const ValidateProfileEdit = (req) => {
   const allowedEditFields = [
-      email,
-      role,
-      profilePicture,
-      bio,
-      skills,
-      programmingLanguages,
-      university,
-      yearOfStudy,
-      isActive,
-      lastLogin,
-      emailVerified,
+    "email",
+    "profilePicture",
+    "bio",
+    "skills",
+    "programmingLanguages",
+    "university",
+    "yearOfStudy",
+    "isActive",
+    "lastLogin",
+    "emailVerified",
   ];
   //we will loop through this req  body
   const isEditAllowed = Object.keys(req.body).every((field) =>
     allowedEditFields.includes(field)
   );
-//   console.log(isEditAllowed);
-  
+  //   console.log(isEditAllowed);
 
   return isEditAllowed;
 };
