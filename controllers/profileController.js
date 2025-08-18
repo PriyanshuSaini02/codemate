@@ -22,7 +22,7 @@ const profileEdit = async (req, res) => {
 const profileGet = async (req, res) => {
   try {
     const user = req.user;
-    console.log(user);
+    // console.log(user);
 
     res.send(user);
   } catch (err) {
