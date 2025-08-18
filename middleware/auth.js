@@ -8,15 +8,15 @@ const userAuth = async (req, res, next) => {
   try {
     const { token } = req.cookies;
     if (!token) {
-      return res.status(400).json({ message: "Token is not valid" });
+      return res.status(401).json({ message: "Token is not valid" });
     }
     //validate the token
-    const decodeObj = await jwt.verify(token, "redmi@6225");
+    const decodeObj = await jwt.verify(token, process.env.SECRET_KEY);
     const { _id } = decodeObj;
     // console.log(_id);
 
     //find the user
-    const user = await User.findById(_id);
+    const user = await User.findById(_id).select("+password");
 
     if (!user) {
      return res.status(400).json({ message: "User Not Found" });
