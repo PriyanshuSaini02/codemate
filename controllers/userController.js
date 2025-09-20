@@ -1,6 +1,5 @@
 const bcrypt = require("bcrypt");
 const User = require("../models/userModel");
-const cookieparser = require("cookie-parser");
 
 // Get all users
 const getAllUsers = async (req, res) => {

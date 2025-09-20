@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative Code Editor</title>
+    <link rel="stylesheet" href="https://unpkg.com/codemirror@5.65.0/lib/codemirror.css">
+    <link rel="stylesheet" href="https://unpkg.com/codemirror@5.65.0/theme/monokai.css">
+    <link rel="stylesheet" href="https://unpkg.com/codemirror@5.65.0/theme/dracula.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1e1e1e;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #2d2d30;
+            padding: 10px 20px;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .session-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .session-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .status-indicator.disconnected {
+            background: #f44336;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .language-selector {
+            background: #3c3c3c;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .participants {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+
+        .participant-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #007ACC;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .participant-avatar.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 10px;
+            height: 10px;
+            background: #4CAF50;
+            border-radius: 50%;
+            border: 2px solid #2d2d30;
+        }
+
+        .participants-tooltip {
+            position: absolute;
+            top: 45px;
+            right: 0;
+            background: #2d2d30;
+            border: 1px solid #555;
+            border-radius: 6px;
+            padding: 10px;
+            min-width: 200px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            display: none;
+        }
+
+        .participants-tooltip h4 {
+            color: #4CAF50;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .participant-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            font-size: 13px;
+        }
+
+        .participant-item-avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .editor-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .CodeMirror {
+            height: 100% !important;
+            font-size: 14px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+
+        .cursor-indicator {
+            position: absolute;
+            width: 2px;
+            background: #FF6B6B;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .cursor-label {
+            position: absolute;
+            background: #FF6B6B;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            white-space: nowrap;
+            transform: translateY(-100%);
+            margin-top: -2px;
+        }
+
+        .footer {
+            background: #2d2d30;
+            padding: 8px 20px;
+            border-top: 1px solid #3e3e42;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #cccccc;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #2d2d30;
+            margin: 10% auto;
+            padding: 30px;
+            width: 400px;
+            border-radius: 8px;
+            color: white;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            background: #3c3c3c;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .form-group input[readonly] {
+            background: #2a2a2a;
+            color: #aaa;
+            cursor: not-allowed;
+        }
+
+        .btn {
+            background: #007ACC;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        .btn:hover {
+            background: #005a9e;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            z-index: 1001;
+            display: none;
+        }
+
+        .notification.error {
+            background: #f44336;
+        }
+
+        .notification.info {
+            background: #2196F3;
+        }
+
+        .user-info,
+        .guest-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #3c3c3c;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #555;
+            margin-bottom: 15px;
+        }
+
+        .logout-btn,
+        .login-link {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            text-decoration: none;
+        }
+
+        .login-link {
+            background: #007bff;
+        }
+
+        .logout-btn:hover,
+        .login-link:hover {
+            opacity: 0.8;
+        }
+
+        .user-preview {
+            background: #3c3c3c;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #555;
+        }
+
+        .user-preview h4 {
+            color: #4CAF50;
+            margin-bottom: 8px;
+        }
+
+        .user-preview p {
+            margin: 4px 0;
+            font-size: 13px;
+            color: #cccccc;
+        }
+
+        .debug-info {
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #444;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .debug-info h4 {
+            color: #ff9800;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Connection Modal -->
+    <div id="connectionModal" class="modal" style="display: block;">
+        <div class="modal-content">
+            <h2 style="text-align: center;">Join Collaborative Session</h2>
+            <hr>
+            <br>
+
+            <div id="debugInfo" class="debug-info" style="display: none;">
+                <p style="text-align: center;">Welcome to Collborator</p>
+                <pre id="debugContent" style="display: none;"></pre>
+            </div>
+
+            <div class="form-group">
+                <label for="userToken">Access Token (Required):</label>
+                <input type="text" id="userToken" placeholder="Enter your access token to continue" required>
+            </div>
+            <div class="form-group">
+                <label for="roomId">Room ID:</label>
+                <input type="text" id="roomId" placeholder="Enter room ID to join or create">
+            </div>
+
+            <button class="btn" onclick="connectToSession()">Join Session</button>
+        </div>
+    </div>
+
+    <!-- Main Editor Interface -->
+    <div class="header">
+        <div class="session-info">
+            <div class="status-indicator disconnected" id="statusIndicator"></div>
+            <div class="session-title" id="sessionTitle">Collaborative Code Editor</div>
+        </div>
+        <div class="controls">
+            <select class="language-selector" id="languageSelector" onchange="changeLanguage()">
+                <option value="javascript">JavaScript</option>
+                <option value="python">Python</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+            </select>
+            <div class="participants" id="participants">
+                <!-- Participants tooltip -->
+                <div id="participantsTooltip" class="participants-tooltip">
+                    <h4>Active Participants</h4>
+                    <div id="participantsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="editor-container">
+        <textarea id="codeEditor"></textarea>
+    </div>
+
+    <div class="footer">
+        <div class="connection-status">
+            <span id="connectionStatus">Disconnected</span>
+            <span>•</span>
+            <span id="participantCount">0 participants</span>
+        </div>
+        <div id="lastModified">Never modified</div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/codemirror@5.65.0/lib/codemirror.js"></script>
+    <script src="https://unpkg.com/codemirror@5.65.0/mode/javascript/javascript.js"></script>
+    <script src="https://unpkg.com/codemirror@5.65.0/mode/python/python.js"></script>
+    <script src="https://unpkg.com/codemirror@5.65.0/mode/clike/clike.js"></script>
+    <script src="https://unpkg.com/codemirror@5.65.0/addon/edit/closebrackets.js"></script>
+    <script src="https://unpkg.com/codemirror@5.65.0/addon/edit/matchbrackets.js"></script>
+    <script src="https://unpkg.com/socket.io@4.0.0/client-dist/socket.io.js"></script>
+
+    <script>
+        let socket;
+        let editor;
+        let currentRoomId;
+        let currentUser;
+        let isUpdatingFromRemote = false;
+        let updateTimeout;
+        const cursors = new Map();
+        let connectedUsersData = new Map(); // Store user data for participants
+        let currentConnectedUsers = []; // Track current connected user IDs
+
+        // Get cookie value by name
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        // Setup user info from URL params, cookies, or localStorage
+        function setupUserInfo() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const storedToken = localStorage.getItem('userToken');
+            const cookieToken = getCookie('token'); // Get token from cookie
+
+            if (urlParams.get('room')) {
+                document.getElementById('roomId').value = urlParams.get('room');
+            }
+
+            // Priority: URL token > Cookie token > LocalStorage token
+            if (urlParams.get('token')) {
+                document.getElementById('userToken').value = urlParams.get('token');
+                validateTokenAndShowInfo();
+            } else if (cookieToken) {
+                document.getElementById('userToken').value = cookieToken;
+                document.getElementById('userToken').placeholder = 'Token loaded from cookie';
+                validateTokenAndShowInfo();
+            } else if (storedToken) {
+                document.getElementById('userToken').value = storedToken;
+                validateTokenAndShowInfo();
+            }
+
+            // Auto-connect if token and room are present
+            if ((urlParams.get('token') || cookieToken) && urlParams.get('room')) {
+                setTimeout(() => connectToSession(), 500);
+            }
+        }
+
+        // Extract user data from token - ENHANCED VERSION WITH DEBUG
+        function getUserFromToken(token) {
+            if (!token || token.trim() === '') {
+                throw new Error('Token is required');
+            }
+
+            let userName = null;
+            let email = null;
+            let role = 'user';
+            let userId = null;
+            let decodedPayload = null;
+
+            // Try to extract info from JWT if it's a valid JWT
+            try {
+                const parts = token.split('.');
+                if (parts.length === 3) {
+                    // Add padding if needed for base64 decoding
+                    let payload = parts[1];
+                    while (payload.length % 4) {
+                        payload += '=';
+                    }
+
+                    decodedPayload = JSON.parse(atob(payload));
+                    console.log('Decoded JWT payload:', decodedPayload);
+
+                    // Show debug info
+                    const debugDiv = document.getElementById('debugInfo');
+                    const debugContent = document.getElementById('debugContent');
+                    debugContent.textContent = JSON.stringify(decodedPayload, null, 2);
+                    debugDiv.style.display = 'block';
+
+                    // Extract user ID first (this is what the server uses to find the user)
+                    userId = decodedPayload._id ||
+                        decodedPayload.id ||
+                        decodedPayload.sub ||
+                        decodedPayload.user_id ||
+                        decodedPayload.userId;
+
+                    // The server will fetch the actual user data from database using this ID
+                    // So we don't need to extract name from JWT - server will provide it
+                    console.log('Extracted user ID from JWT:', userId);
+
+                    // For client-side display, we can try to get basic info
+                    userName = decodedPayload.name ||
+                        decodedPayload.username ||
+                        decodedPayload.displayName ||
+                        null; // Let server provide the name
+
+                    email = decodedPayload.email || null;
+                    role = decodedPayload.role || 'user';
+
+                } else {
+                    throw new Error('Invalid JWT format - not 3 parts');
+                }
+            } catch (e) {
+                console.log('JWT parsing failed:', e.message);
+                throw new Error('Invalid JWT token format: ' + e.message);
+            }
+
+            // If we couldn't extract user ID, that's a problem
+            if (!userId) {
+                throw new Error('No user ID found in JWT token. Token must contain _id, id, sub, or user_id field.');
+            }
+
+            return {
+                id: userId,
+                name: userName, // May be null - server will provide actual name
+                email: email,
+                role: role,
+                token: token,
+                isValid: true,
+                rawPayload: decodedPayload
+            };
+        }
+
+        // Validate token and show user info - UPDATED
+        function validateTokenAndShowInfo() {
+            const token = document.getElementById('userToken').value.trim();
+            const previewDiv = document.getElementById('userPreview');
+            const debugDiv = document.getElementById('debugInfo');
+
+            if (!token) {
+                if (previewDiv) previewDiv.style.display = 'none';
+                debugDiv.style.display = 'none';
+                return;
+            }
+
+            try {
+                const user = getUserFromToken(token);
+
+                // Show user preview (may show "Will be fetched from server" for name)
+                if (previewDiv) {
+                    document.getElementById('previewName').textContent = user.name || 'Will be fetched from server';
+                    document.getElementById('previewEmail').textContent = user.email || 'Will be fetched from server';
+                    document.getElementById('previewRole').textContent = user.role;
+                    previewDiv.style.display = 'block';
+                }
+
+                console.log('Token validation successful:', user);
+            } catch (error) {
+                if (previewDiv) previewDiv.style.display = 'none';
+                debugDiv.style.display = 'none';
+                showNotification(error.message, 'error');
+                console.error('Token validation failed:', error);
+            }
+        }
+
+        // Get user token
+        function getUserToken() {
+            return document.getElementById('userToken').value.trim() || 'guest-token';
+        }
+
+        // Language mode mapping
+        const languageModes = {
+            javascript: 'javascript',
+            python: 'python',
+            java: 'text/x-java',
+            cpp: 'text/x-c++src'
+        };
+
+        // Initialize CodeMirror
+        function initializeEditor() {
+            editor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+                lineNumbers: true,
+                theme: 'dracula',
+                mode: 'javascript',
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                indentUnit: 4,
+                indentWithTabs: false,
+                lineWrapping: true
+            });
+
+            // Handle code changes
+            editor.on('change', (instance, change) => {
+                if (!isUpdatingFromRemote && socket && currentRoomId) {
+                    clearTimeout(updateTimeout);
+                    updateTimeout = setTimeout(() => {
+                        const code = editor.getValue();
+                        socket.emit('code-change', {
+                            roomId: currentRoomId,
+                            code: code,
+                            language: document.getElementById('languageSelector').value,
+                            change: change
+                        });
+                    }, 300); // Debounce updates
+                }
+            });
+
+            // Handle cursor changes
+            editor.on('cursorActivity', () => {
+                if (!isUpdatingFromRemote && socket && currentRoomId) {
+                    const cursor = editor.getCursor();
+                    const selection = editor.getSelection();
+                    socket.emit('cursor-update', {
+                        roomId: currentRoomId,
+                        cursorPosition: cursor,
+                        selection: selection
+                    });
+                }
+            });
+        }
+
+        // Connect to collaborative session - SIMPLIFIED TO RELY ON SERVER
+        function connectToSession() {
+            const token = document.getElementById('userToken').value.trim();
+            const roomId = document.getElementById('roomId').value.trim();
+
+            if (!token) {
+                showNotification('Access token is required', 'error');
+                return;
+            }
+
+            if (!roomId) {
+                showNotification('Please enter room ID', 'error');
+                return;
+            }
+
+            // Validate token format first
+            let tokenUser;
+            try {
+                tokenUser = getUserFromToken(token);
+            } catch (error) {
+                showNotification(error.message, 'error');
+                return;
+            }
+
+            console.log('Token validated, user ID found:', tokenUser.id);
+
+            // Store user info for future sessions
+            localStorage.setItem('userToken', token);
+            currentRoomId = roomId;
+
+            // Don't set currentUser yet - let server provide the real user data
+            currentUser = null;
+
+            // Initialize Socket.IO connection - Let server handle everything
+            socket = io(window.location.origin, {
+                auth: {
+                    token: token  // Only send token, server will extract and validate everything
+                },
+                transports: ['polling', 'websocket'],
+                timeout: 60000,
+                forceNew: true,
+                reconnection: true,
+                reconnectionDelay: 2000,
+                reconnectionAttempts: 3,
+                upgrade: true,
+                rememberUpgrade: false
+            });
+
+            // Connection event handlers
+            socket.on('connect', () => {
+                console.log('Connected to server');
+                updateConnectionStatus('Connected', true);
+                socket.emit('join-session', {
+                    roomId: currentRoomId
+                    // Don't send user data - let server handle it
+                });
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Disconnected from server');
+                updateConnectionStatus('Disconnected', false);
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('Connection error:', error);
+                showNotification('Connection failed: ' + (error.message || 'Unknown error'), 'error');
+                updateConnectionStatus('Connection Failed', false);
+            });
+
+            socket.on('reconnect', (attemptNumber) => {
+                console.log('Reconnected after', attemptNumber, 'attempts');
+                showNotification('Reconnected to server', 'info');
+                updateConnectionStatus('Connected', true);
+                if (currentRoomId) {
+                    socket.emit('join-session', {
+                        roomId: currentRoomId
+                    });
+                }
+            });
+
+            socket.on('reconnect_error', (error) => {
+                console.error('Reconnection error:', error);
+                showNotification('Reconnection failed: ' + (error.message || 'Unknown error'), 'error');
+            });
+
+            // Session event handlers
+            socket.on('session-joined', (data) => {
+                console.log('Joined session:', data);
+                document.getElementById('connectionModal').style.display = 'none';
+                document.getElementById('sessionTitle').textContent = `Room: ${data.roomId}`;
+
+                // Use server-provided user info (this is the real user data from database)
+                if (data.user && data.user.name) {
+                    currentUser = data.user;
+                    console.log('Got user info from server:', currentUser);
+                } else {
+                    console.error('Server did not provide user info:', data);
+                    currentUser = { name: 'Unknown User', id: 'unknown' };
+                }
+
+                // IMPORTANT: Store ALL participants from initial session data
+                if (data.participants && Array.isArray(data.participants)) {
+                    console.log('Initial participants from server:', data.participants);
+                    data.participants.forEach(participant => {
+                        if (participant._id && participant.name) {
+                            connectedUsersData.set(participant._id.toString(), participant);
+                            console.log('Stored participant:', participant.name, participant._id);
+                        }
+                    });
+                }
+
+                isUpdatingFromRemote = true;
+                editor.setValue(data.code || '');
+                isUpdatingFromRemote = false;
+
+                // Everyone gets edit access now
+                editor.setOption('readOnly', false);
+                editor.setOption('cursorBlinkRate', 530); // Normal cursor
+                document.getElementById('languageSelector').disabled = false;
+
+                showNotification(`Welcome ${currentUser.name}! You can edit the code.`, 'info');
+
+                setLanguage(data.language || 'javascript');
+                updateParticipants(data.participants, data.connectedUsers);
+
+                // Update URL without reloading
+                const newUrl = `${window.location.pathname}?name=${encodeURIComponent(currentUser.name)}&room=${encodeURIComponent(currentRoomId)}`;
+                window.history.replaceState({}, '', newUrl);
+            });
+
+            socket.on('user-joined', (data) => {
+                console.log('User joined:', data);
+                // Store user data for avatar display
+                if (data.user && data.user._id) {
+                    connectedUsersData.set(data.user._id.toString(), data.user);
+                    console.log('Stored new user:', data.user.name, data.user._id);
+                }
+                updateParticipants(null, data.connectedUsers);
+                showNotification(`${data.user.name} joined the session`, 'info');
+            });
+
+            socket.on('user-left', (data) => {
+                console.log('User left:', data);
+                // Remove user data
+                if (data.user && data.user._id) {
+                    connectedUsersData.delete(data.user._id.toString());
+                    console.log('Removed user:', data.user.name, data.user._id);
+                }
+                updateParticipants(null, data.connectedUsers);
+                showNotification(`${data.user.name} left the session`, 'info');
+                removeCursor(data.user._id);
+            });
+
+            socket.on('code-updated', (data) => {
+                console.log('Code updated by:', data.author.name);
+                isUpdatingFromRemote = true;
+                editor.setValue(data.code);
+                isUpdatingFromRemote = false;
+
+                if (data.language) {
+                    setLanguage(data.language);
+                }
+
+                updateLastModified(data.author.name, data.timestamp);
+            });
+
+            socket.on('cursor-updated', (data) => {
+                updateCursor(data.userId, data.userName, data.cursorPosition, data.selection);
+            });
+
+            socket.on('language-updated', (data) => {
+                setLanguage(data.language);
+                showNotification(`Language changed to ${data.language} by ${data.changedBy.name}`, 'info');
+            });
+
+            socket.on('error', (data) => {
+                console.error('Socket error:', data);
+                showNotification(data.message, 'error');
+            });
+        }
+
+        // Update connection status
+        function updateConnectionStatus(status, isConnected) {
+            document.getElementById('connectionStatus').textContent = status;
+            const indicator = document.getElementById('statusIndicator');
+
+            if (isConnected) {
+                indicator.classList.remove('disconnected');
+                indicator.classList.add('connected');
+            } else {
+                indicator.classList.remove('connected');
+                indicator.classList.add('disconnected');
+            }
+        }
+
+        // Get avatar color based on user name
+        function getAvatarColor(name) {
+            const colors = [
+                '#007ACC', '#FF6B6B', '#4ECDC4', '#45B7D1',
+                '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8',
+                '#F7DC6F', '#BB8FCE', '#85C1E9', '#F8C471'
+            ];
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return colors[Math.abs(hash) % colors.length];
+        }
+
+        // Show participants tooltip - FIXED VERSION
+        function showParticipantsTooltip() {
+            const tooltip = document.getElementById('participantsTooltip');
+            const participantsList = document.getElementById('participantsList');
+
+            // Clear existing content
+            participantsList.innerHTML = '';
+
+            console.log('Showing tooltip. Connected users data:', connectedUsersData);
+            console.log('Current connected users:', currentConnectedUsers);
+
+            // Get all participants who are currently connected
+            const activeParticipants = [];
+
+            // Add participants based on current connected users list
+            currentConnectedUsers.forEach(userId => {
+                const userData = connectedUsersData.get(userId.toString());
+                if (userData) {
+                    activeParticipants.push(userData);
+                } else {
+                    // Fallback for users we don't have data for
+                    activeParticipants.push({
+                        _id: userId,
+                        name: `User ${userId.slice(-4)}`, // Show last 4 chars of ID
+                    });
+                }
+            });
+
+            console.log('Active participants for tooltip:', activeParticipants);
+
+            if (activeParticipants.length === 0) {
+                participantsList.innerHTML = '<div class="participant-item">No participants</div>';
+            } else {
+                activeParticipants.forEach(user => {
+                    const participantItem = document.createElement('div');
+                    participantItem.className = 'participant-item';
+
+                    const avatar = document.createElement('div');
+                    avatar.className = 'participant-item-avatar';
+                    avatar.textContent = user.name.charAt(0).toUpperCase();
+                    avatar.style.backgroundColor = getAvatarColor(user.name);
+
+                    const name = document.createElement('span');
+                    name.textContent = user.name;
+
+                    participantItem.appendChild(avatar);
+                    participantItem.appendChild(name);
+                    participantsList.appendChild(participantItem);
+                });
+            }
+
+            tooltip.style.display = 'block';
+        }
+
+        // Hide participants tooltip
+        function hideParticipantsTooltip() {
+            const tooltip = document.getElementById('participantsTooltip');
+            tooltip.style.display = 'none';
+        }
+
+        // Update participants display - ENHANCED VERSION WITH PROPER TRACKING
+        function updateParticipants(allParticipants, connectedUsers) {
+            const participantsEl = document.getElementById('participants');
+            const participantCountEl = document.getElementById('participantCount');
+
+            if (connectedUsers) {
+                // Update current connected users list
+                currentConnectedUsers = [...connectedUsers];
+                console.log('Updated current connected users:', currentConnectedUsers);
+
+                participantCountEl.textContent = `${connectedUsers.length} participants`;
+
+                // Clear existing avatars (but keep tooltip)
+                const tooltip = document.getElementById('participantsTooltip');
+                participantsEl.innerHTML = '';
+                participantsEl.appendChild(tooltip);
+
+                // Add current user to connected users data if not already there
+                if (currentUser && currentUser._id) {
+                    connectedUsersData.set(currentUser._id.toString(), currentUser);
+                }
+
+                // Create avatars for connected users
+                connectedUsers.forEach((userId, index) => {
+                    const avatar = document.createElement('div');
+                    avatar.className = 'participant-avatar active';
+
+                    // Get user data from our stored data or use fallback
+                    const userData = connectedUsersData.get(userId.toString());
+                    const userName = userData ? userData.name : `User ${index + 1}`;
+
+                    // Set avatar content to first letter of name
+                    avatar.textContent = userName.charAt(0).toUpperCase();
+
+                    // Set unique color for each user
+                    avatar.style.backgroundColor = getAvatarColor(userName);
+
+                    // Add hover events to show all participants
+                    avatar.addEventListener('mouseenter', showParticipantsTooltip);
+                    avatar.addEventListener('mouseleave', hideParticipantsTooltip);
+
+                    participantsEl.appendChild(avatar);
+                });
+
+                // Add hover events to the participants container as well
+                participantsEl.addEventListener('mouseenter', showParticipantsTooltip);
+                participantsEl.addEventListener('mouseleave', hideParticipantsTooltip);
+            }
+
+            // Process initial participants data if provided
+            if (allParticipants && Array.isArray(allParticipants)) {
+                console.log('Processing all participants:', allParticipants);
+                allParticipants.forEach(participant => {
+                    if (participant._id && participant.name) {
+                        connectedUsersData.set(participant._id.toString(), participant);
+                        console.log('Stored participant from allParticipants:', participant.name, participant._id);
+                    }
+                });
+            }
+        }
+
+        // Change programming language
+        function changeLanguage() {
+            const language = document.getElementById('languageSelector').value;
+            if (socket && currentRoomId) {
+                socket.emit('language-change', {
+                    roomId: currentRoomId,
+                    language: language
+                });
+            }
+        }
+
+        // Set editor language mode
+        function setLanguage(language) {
+            if (editor && languageModes[language]) {
+                editor.setOption('mode', languageModes[language]);
+                document.getElementById('languageSelector').value = language;
+            }
+        }
+
+        // Update cursor position for other users
+        function updateCursor(userId, userName, position, selection) {
+            // Remove existing cursor
+            removeCursor(userId);
+
+            if (!position) return;
+
+            const cursor = editor.getDoc().setBookmark(position, {
+                widget: createCursorWidget(userName)
+            });
+
+            cursors.set(userId, cursor);
+        }
+
+        // Remove cursor for user
+        function removeCursor(userId) {
+            const cursor = cursors.get(userId);
+            if (cursor) {
+                cursor.clear();
+                cursors.delete(userId);
+            }
+        }
+
+        // Create cursor widget
+        function createCursorWidget(userName) {
+            const cursor = document.createElement('span');
+            cursor.className = 'cursor-indicator';
+            cursor.innerHTML = `<div class="cursor-label">${userName}</div>`;
+            return cursor;
+        }
+
+        // Update last modified info
+        function updateLastModified(authorName, timestamp) {
+            const lastModifiedEl = document.getElementById('lastModified');
+            const time = new Date(timestamp).toLocaleTimeString();
+            lastModifiedEl.textContent = `Modified by ${authorName} at ${time}`;
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize editor on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeEditor();
+            setupUserInfo();
+        });
+
+        // Handle token input changes
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('userToken').addEventListener('input', validateTokenAndShowInfo);
+        });
+
+        // Handle enter key in modal inputs
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && document.getElementById('connectionModal').style.display !== 'none') {
+                connectToSession();
+            }
+        });
+    </script>
+</body>
+
+</html>

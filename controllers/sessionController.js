@@ -23,7 +23,7 @@ const createSession = async (req, res) => {
             isPublic: isPublic !== undefined ? isPublic : true,
             tags: tags || [],
             codeHistory: [],
-            activityLog: [{ user: userId, status: 'active' }] 
+            activityLog: [{ user: userId, status: 'active' }]
         });
 
         await session.save();
@@ -42,7 +42,7 @@ const createSession = async (req, res) => {
 
 const joinSession = async (req, res) => {
     try {
-        const roomId  = req.params.roomId;
+        const roomId = req.params.roomId;
         const userId = req.user._id;
 
         const session = await Session.findOne({ roomId });

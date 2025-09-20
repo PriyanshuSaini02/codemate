@@ -14,20 +14,20 @@ const sessionSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
-    description: { 
+    description: {
         type: String,
         default: ''
     },
-    creator: { 
+    creator: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    language: { 
+    language: {
         type: String,
         default: 'javascript'
     },
-    codeHistory: [{ 
+    codeHistory: [{
         code: { type: String },
         timestamp: { type: Date, default: Date.now }
     }],
@@ -35,7 +35,7 @@ const sessionSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
-    tags: [{ 
+    tags: [{
         type: String
     }],
     isActive: {
@@ -49,12 +49,7 @@ const sessionSchema = new mongoose.Schema({
     updatedAt: {
         type: Date,
         default: Date.now
-    },
-     activityLog: [{
-        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        status: { type: String, enum: ['active', 'left'], required: true },
-        timestamp: { type: Date, default: Date.now }
-    }]
+    }
 });
 
 module.exports = mongoose.model('Session', sessionSchema);
