@@ -12,6 +12,7 @@ const profileRouter = require('./routes/profile');
 const sessionRoutes = require('./routes/sessionRoute');
 const handRaiseRoute = require('./routes/handRaiseRoute');
 const collaborativeEditorRoutes = require('./routes/collaborativeEditorRoute');
+const executeCode = require("./controllers/executeCode");
 const { handleCollaborativeEditor } = require('./sockets/collaborativeEditorSocket');
 const app = express();
 const server = http.createServer(app);
@@ -47,6 +48,7 @@ app.use('/api/auth', userRoutes);
 app.use('/api/', profileRouter);
 app.use('/api/session', sessionRoutes);
 app.use('/api/hand', handRaiseRoute);
+app.use('/api/execute', executeCode);
 app.use('/api/editor', collaborativeEditorRoutes);
 
 // Initialize Socket.IO for collaborative editing
