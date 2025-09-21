@@ -365,6 +365,80 @@
             color: #ff9800;
             margin-bottom: 8px;
         }
+
+        /* Left side (status + room id) */
+        .left-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: green;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* Center section (buttons) */
+        .run-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .run-container button {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .debug-btn {
+            background: #444;
+            color: white;
+        }
+
+        .run-btn {
+            background: #333;
+            color: white;
+        }
+
+        .submit-btn {
+            background: #16a34a;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Right side (dropdown + profile) */
+        .right-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .lang-select {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: none;
+            background: #3a3a3a;
+            color: white;
+        }
+
+        .profile {
+            width: 32px;
+            height: 32px;
+            background: #facc15;
+            /* yellow circle */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: black;
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -399,6 +473,12 @@
         <div class="session-info">
             <div class="status-indicator disconnected" id="statusIndicator"></div>
             <div class="session-title" id="sessionTitle">Collaborative Code Editor</div>
+
+        </div>
+        <div class="run-container">
+            <button class="debug-btn"> Debug </button>
+            <button class="run-btn">Run</button>
+            <button class="submit-btn">Submit</button>
         </div>
         <div class="controls">
             <select class="language-selector" id="languageSelector" onchange="changeLanguage()">
