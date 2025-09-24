@@ -3,6 +3,8 @@ const { activeEditorSessions } = require('../controllers/collaborativeEditorCont
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 
+
+
 // Socket authentication middleware - requires valid JWT token
 const authenticateSocket = async (socket, next) => {
     try {

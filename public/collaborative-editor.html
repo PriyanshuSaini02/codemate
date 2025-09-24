@@ -477,11 +477,12 @@
         </div>
         <div class="run-container">
             <button class="debug-btn"> Debug </button>
-            <button class="run-btn">Run</button>
+            <button id="run-btn">Run</button>
             <button class="submit-btn">Submit</button>
+
         </div>
         <div class="controls">
-            <select class="language-selector" id="languageSelector" onchange="changeLanguage()">
+            <select class="language-selector" class="language" id="languageSelector" onchange="changeLanguage()">
                 <option value="javascript">JavaScript</option>
                 <option value="python">Python</option>
                 <option value="java">Java</option>
@@ -499,7 +500,12 @@
 
     <div class="editor-container">
         <textarea id="codeEditor"></textarea>
+
     </div>
+    <h3>Output</h3><br>
+    <pre id="output"></pre>
+
+
 
     <div class="footer">
         <div class="connection-status">
@@ -1149,6 +1155,52 @@
                 connectToSession();
             }
         });
+
+
+        //Ru-btn Logic
+
+        // Run button logic
+        document.getElementById("run-btn").addEventListener("click", async () => {
+            console.log("Run button clicked ✅");
+
+            const code = editor.getValue(); // CodeMirror content
+            const language = document.getElementById("languageSelector").value; // selected language
+            const input = document.getElementById("stdin")
+                ? document.getElementById("stdin").value
+                : ""; // safe fallback if no stdin box
+
+            try {
+                const res = await fetch("/api/editor/execute", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        source_code: code,
+                        language_id: language,  // backend maps it using your ExecuteFun
+                        stdin: input
+                    }),
+                    credentials: "include"
+                });
+
+                console.log("Response status:", res.status);
+                const result = await res.json();
+                console.log("Execution result:", result);
+
+                // Prefer stdout, then stderr, then compile output
+                document.getElementById("output").innerText =
+                    (result.stdout ? result.stdout : "") +
+                    (result.stderr ? "\nError: " + result.stderr : "") +
+                    (result.compile_output ? "\nCompiler: " + result.compile_output : "") ||
+                    result.status ||
+                    "No output";
+            } catch (err) {
+                console.error("Fetch error:", err);
+                document.getElementById("output").innerText = "Error: " + err.message;
+            }
+        });
+
+
     </script>
 </body>
 
