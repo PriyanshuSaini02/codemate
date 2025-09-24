@@ -127,6 +127,7 @@ const loginUser = async (req, res) => {
         message: "Login successful",
         user: { ...user.toObject(), password: undefined },
       });
+      localStorage.setItem("token", user.accessToken);
 
     console.log("Logged In:", user.name);
   } catch (error) {
