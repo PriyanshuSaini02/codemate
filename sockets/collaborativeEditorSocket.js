@@ -2,7 +2,7 @@ const Session = require('../models/sessionModel');
 const { activeEditorSessions } = require('../controllers/collaborativeEditorController');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
-
+const Call = require('../models/callModel');
 
 
 // Socket authentication middleware - requires valid JWT token
@@ -318,6 +318,224 @@ const handleCollaborativeEditor = (io) => {
                 console.error('Error changing language:', error);
                 socket.emit('error', { message: 'Failed to change language' });
             }
+        });
+
+         // Voice calling events
+        socket.on('start-call', async (data) => {
+            try {
+                const { roomId } = data;
+                
+                if (socket.currentRoom !== roomId) {
+                    socket.emit('error', { message: 'Not connected to this session' });
+                    return;
+                }
+
+                // Check if there's already an active call
+                const existingCall = await Call.findOne({ roomId, isActive: true });
+                if (existingCall) {
+                    socket.emit('error', { message: 'Call already in progress' });
+                    return;
+                }
+
+                // Create new call
+                const call = new Call({
+                    roomId,
+                    startedBy: socket.user._id,
+                    participants: [{
+                        userId: socket.user._id,
+                        joinedAt: new Date()
+                    }]
+                });
+
+                await call.save();
+
+                // Notify all users in the room about the call
+                io.to(roomId).emit('call-started', {
+                    callId: call._id,
+                    roomId,
+                    startedBy: {
+                        _id: socket.user._id,
+                        name: socket.user.name
+                    },
+                    startTime: call.startTime
+                });
+
+            } catch (error) {
+                console.error('Error starting call:', error);
+                socket.emit('error', { message: 'Failed to start call' });
+            }
+        });
+
+        socket.on('join-call', async (data) => {
+            try {
+                const { roomId } = data;
+                
+                if (socket.currentRoom !== roomId) {
+                    socket.emit('error', { message: 'Not connected to this session' });
+                    return;
+                }
+
+                // Find active call
+                const call = await Call.findOne({ roomId, isActive: true });
+                if (!call) {
+                    socket.emit('error', { message: 'No active call found' });
+                    return;
+                }
+
+                // Check if user is already in the call
+                const existingParticipant = call.participants.find(p => p.userId.toString() === socket.user._id.toString());
+                if (!existingParticipant) {
+                    call.participants.push({
+                        userId: socket.user._id,
+                        joinedAt: new Date()
+                    });
+                    await call.save();
+                }
+
+                // Join the call room for WebRTC signaling
+                socket.join(`call-${roomId}`);
+                socket.inCall = true;
+
+                // Notify others that user joined the call
+                socket.to(roomId).emit('user-joined-call', {
+                    user: {
+                        _id: socket.user._id,
+                        name: socket.user.name
+                    },
+                    participantCount: call.participants.filter(p => !p.leftAt).length
+                });
+
+                socket.emit('call-joined', {
+                    callId: call._id,
+                    roomId,
+                    participantCount: call.participants.filter(p => !p.leftAt).length
+                });
+
+            } catch (error) {
+                console.error('Error joining call:', error);
+                socket.emit('error', { message: 'Failed to join call' });
+            }
+        });
+
+        socket.on('leave-call', async (data) => {
+            try {
+                const { roomId } = data;
+                
+                // Find active call
+                const call = await Call.findOne({ roomId, isActive: true });
+                if (call) {
+                    // Find and update participant
+                    const participant = call.participants.find(p => p.userId.toString() === socket.user._id.toString());
+                    if (participant && !participant.leftAt) {
+                        participant.leftAt = new Date();
+                    }
+
+                    // Check if all participants have left
+                    const activeParticipants = call.participants.filter(p => !p.leftAt);
+                    if (activeParticipants.length === 0) {
+                        call.isActive = false;
+                        call.endTime = new Date();
+                    }
+
+                    await call.save();
+
+                    // Leave the call room
+                    socket.leave(`call-${roomId}`);
+                    socket.inCall = false;
+
+                    // Notify others that user left the call
+                    socket.to(roomId).emit('user-left-call', {
+                        user: {
+                            _id: socket.user._id,
+                            name: socket.user.name
+                        },
+                        participantCount: activeParticipants.length,
+                        callEnded: !call.isActive
+                    });
+
+                    socket.emit('call-left', {
+                        callEnded: !call.isActive,
+                        duration: call.duration
+                    });
+                }
+
+            } catch (error) {
+                console.error('Error leaving call:', error);
+                socket.emit('error', { message: 'Failed to leave call' });
+            }
+        });
+
+        socket.on('end-call', async (data) => {
+            try {
+                const { roomId } = data;
+                
+                // Find active call
+                const call = await Call.findOne({ roomId, isActive: true });
+                if (!call) {
+                    socket.emit('error', { message: 'No active call found' });
+                    return;
+                }
+
+                // Only the person who started the call can end it
+                if (call.startedBy.toString() !== socket.user._id.toString()) {
+                    socket.emit('error', { message: 'Only the call starter can end the call' });
+                    return;
+                }
+
+                // End the call
+                call.isActive = false;
+                call.endTime = new Date();
+
+                // Mark all active participants as left
+                call.participants.forEach(participant => {
+                    if (!participant.leftAt) {
+                        participant.leftAt = new Date();
+                    }
+                });
+
+                await call.save();
+
+                // Notify all users that call ended
+                io.to(roomId).emit('call-ended', {
+                    endedBy: {
+                        _id: socket.user._id,
+                        name: socket.user.name
+                    },
+                    duration: call.duration,
+                    endTime: call.endTime
+                });
+
+            } catch (error) {
+                console.error('Error ending call:', error);
+                socket.emit('error', { message: 'Failed to end call' });
+            }
+        });
+
+        // WebRTC signaling events
+        socket.on('webrtc-offer', (data) => {
+            socket.to(`call-${data.roomId}`).emit('webrtc-offer', {
+                offer: data.offer,
+                from: socket.user._id,
+                fromName: socket.user.name
+            });
+        });
+
+        socket.on('webrtc-answer', (data) => {
+            socket.to(`call-${data.roomId}`).emit('webrtc-answer', {
+                answer: data.answer,
+                from: socket.user._id,
+                fromName: socket.user.name,
+                to: data.to
+            });
+        });
+
+        socket.on('webrtc-ice-candidate', (data) => {
+            socket.to(`call-${data.roomId}`).emit('webrtc-ice-candidate', {
+                candidate: data.candidate,
+                from: socket.user._id,
+                fromName: socket.user.name,
+                to: data.to
+            });
         });
 
         // Handle disconnect

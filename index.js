@@ -13,6 +13,7 @@ const sessionRoutes = require("./routes/sessionRoute");
 const handRaiseRoute = require("./routes/handRaiseRoute");
 const collaborativeEditorRoutes = require("./routes/collaborativeEditorRoute");
 const executeCode = require("./routes/executeRoute");
+const callRoutes = require("./routes/callRoute");
 const {
   handleCollaborativeEditor,
 } = require("./sockets/collaborativeEditorSocket");
@@ -52,6 +53,7 @@ app.use("/api/session", sessionRoutes);
 app.use("/api/hand", handRaiseRoute);
 app.use("/api/editor", executeCode);
 app.use("/api/editor", collaborativeEditorRoutes);
+app.use("/api/call", callRoutes);
 
 // Initialize Socket.IO for collaborative editing
 handleCollaborativeEditor(io);
